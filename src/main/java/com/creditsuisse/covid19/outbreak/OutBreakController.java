@@ -1,16 +1,8 @@
 package com.creditsuisse.covid19.outbreak;
 
-import com.creditsuisse.covid19.beans.FilterCriteria;
 import com.creditsuisse.covid19.beans.TotalCount;
 import com.mongodb.MongoException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.aggregation.GroupOperation;
-import org.springframework.data.mongodb.core.aggregation.MatchOperation;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,9 +19,6 @@ public class OutBreakController {
 
     @Autowired
     private OutBreakService outBreakService;
-
-    @Autowired
-    MongoTemplate mongoTemplate;
 
     @GetMapping("outbreak/{column}")
     public ResponseEntity<Number> getTotalCount(@PathVariable String column){
@@ -101,6 +90,4 @@ public class OutBreakController {
             return new ResponseEntity<>(totalCounts, HttpStatus.NOT_FOUND);
         }
     }
-
-
 }
