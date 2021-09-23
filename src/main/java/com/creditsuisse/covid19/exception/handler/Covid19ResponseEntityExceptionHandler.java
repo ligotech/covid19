@@ -2,8 +2,10 @@ package com.creditsuisse.covid19.exception.handler;
 
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoWriteException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,8 +71,21 @@ public class Covid19ResponseEntityExceptionHandler extends ResponseEntityExcepti
 
     @ExceptionHandler({MongoBulkWriteException.class})
     public final ResponseEntity handleMongoBulkWriteException(MongoBulkWriteException ex, WebRequest request){
-        String exceptionMessage;
         HttpStatus httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        ExceptionResponseObject exceptionResponseObject = new ExceptionResponseObject(new Date(), ex.getMessage(), request.getDescription(false));
+        return new ResponseEntity(exceptionResponseObject, httpStatus);
+    }
+
+    @ExceptionHandler({BadRequestException.class})
+    public final ResponseEntity handleBadRequestException(BadRequestException ex, WebRequest request){
+        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
+        ExceptionResponseObject exceptionResponseObject = new ExceptionResponseObject(new Date(), ex.getMessage(), request.getDescription(false));
+        return new ResponseEntity(exceptionResponseObject, httpStatus);
+    }
+
+    //@ExceptionHandler({BindException.class})
+    public ResponseEntity<Object> handleBindException(BindException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
+        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
         ExceptionResponseObject exceptionResponseObject = new ExceptionResponseObject(new Date(), ex.getMessage(), request.getDescription(false));
         return new ResponseEntity(exceptionResponseObject, httpStatus);
     }

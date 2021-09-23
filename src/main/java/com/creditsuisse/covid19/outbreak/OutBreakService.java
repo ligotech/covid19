@@ -1,5 +1,6 @@
 package com.creditsuisse.covid19.outbreak;
 
+import com.creditsuisse.covid19.beans.ReadyToWorkRequestObject;
 import com.creditsuisse.covid19.beans.TotalCount;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -86,6 +87,32 @@ public class OutBreakService {
         return mongoTemplate.find(query, OutBreak.class).stream().map(it -> it.getCombined_Key()).collect(Collectors.toList());
     }
 
+    public Boolean getReadyToWork(ReadyToWorkRequestObject object){
+        Double kmInLongitudeDegree = 111.320 * Math.cos( object.getLatitude() / 180.0 * Math.PI);
+        Double deltaLat = object.getRadius() / 111.1;
+        Double deltaLong = object.getRadius() / kmInLongitudeDegree;
+
+        Double minLat = object.getLatitude() - deltaLat;
+        Double maxLat = object.getLatitude() + deltaLat;
+        Double minLong = object.getLongitude() - deltaLong;
+        Double maxLong = object.getLongitude() + deltaLong;
+
+        Criteria criteria = new Criteria("date").is(object.getDate())
+                            .and("Lat").gt(minLat).lt(maxLat)
+                            .and("Long_").gt(minLong).lt(maxLong);
+        Query query = new Query(criteria);
+        query.fields().include("Active", "Country_Region");
+        Double totalActive  = mongoTemplate.find(query, OutBreak.class)
+                            .stream()
+                            .parallel()
+                            .mapToDouble(it -> it.getActive()).sum();
+        Double percent = (totalActive / object.getPopulation()) * 100;
+        if(percent < object.getThreshold()){
+            return true;
+        }
+        return false;
+    }
+
     private Criteria getCriteria(Map<String, String> params){
         List<Criteria> criterias = new ArrayList<>();
         for (Map.Entry<String, String> entry : params.entrySet()){
@@ -117,17 +144,17 @@ public class OutBreakService {
         Criteria criteria = getCriteria(params);
         MatchOperation matchStage = Aggregation.match(criteria);
         String groupBy = getGroupBy(params.get("groupBy"));
-        GroupOperation groupByStateAndSumPop;
+        GroupOperation groupOperation;
         if(alias.equals("sum")){
-            groupByStateAndSumPop = Aggregation.group(groupBy)
+            groupOperation = Aggregation.group(groupBy)
                     .sum(aggColumn).as(alias);
         }
         else{
-            groupByStateAndSumPop = Aggregation.group(groupBy)
+            groupOperation = Aggregation.group(groupBy)
                     .avg(aggColumn).as(alias);
         }
 
-        Aggregation aggregation = Aggregation.newAggregation(matchStage, groupByStateAndSumPop);
+        Aggregation aggregation = Aggregation.newAggregation(matchStage, groupOperation);
 
         AggregationResults<TotalCount> output = mongoTemplate.aggregate(aggregation, "covid19data", TotalCount.class);
         return output.getMappedResults();

@@ -1,6 +1,8 @@
 package com.creditsuisse.covid19.outbreak;
 
+import com.creditsuisse.covid19.beans.ReadyToWorkRequestObject;
 import com.creditsuisse.covid19.beans.TotalCount;
+import com.creditsuisse.covid19.exception.handler.BadRequestException;
 import com.creditsuisse.covid19.exception.handler.Covid19Exception;
 import com.creditsuisse.covid19.exception.handler.NotFoundException;
 import com.mongodb.MongoException;
@@ -9,11 +11,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,7 @@ public class OutBreakController {
     @GetMapping("outbreak/{column}")
     public ResponseEntity<Number> getTotalCount(@PathVariable String column){
         Number val = null;
+        long start = System.currentTimeMillis();
         try{
             if(column.equals("active")){
                 val = outBreakService.getTotalActive();
@@ -57,6 +62,9 @@ public class OutBreakController {
             logger.error("Exception:", ex.getMessage(), ex);
             throw new Covid19Exception(ex.getMessage());
         }
+        long end = System.currentTimeMillis();
+        long diff = start - end;
+        logger.info("Total time to get data from url: "+diff);
         if(val != null){
             return new ResponseEntity<>(val, HttpStatus.OK);
         }
@@ -107,7 +115,12 @@ public class OutBreakController {
         try {
             String threshold = params.get("threshold");
             String date = params.get("date");
-            list = outBreakService.getContainmentZone(Long.valueOf(threshold), Integer.valueOf(date));
+            if(threshold != null && date !=null){
+                list = outBreakService.getContainmentZone(Long.valueOf(threshold), Integer.valueOf(date));
+            }
+            else{
+                throw new BadRequestException("Request param must contain threshold=?&date=?, found: " + params.keySet());
+            }
         }
         catch (MongoException ex){
             logger.error("Exception:", ex.getMessage(), ex);
@@ -121,5 +134,20 @@ public class OutBreakController {
             return new ResponseEntity<>(list, HttpStatus.OK);
         }
         throw new NotFoundException("Data Not Found: " + list);
+    }
+
+    @GetMapping("query/ready-to-work")
+    public ResponseEntity<Boolean> getReadyToWork(@Valid ReadyToWorkRequestObject params){
+        try {
+            return new ResponseEntity<>(outBreakService.getReadyToWork(params), HttpStatus.OK);
+        }
+        catch (MongoException ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
+        catch (Exception ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
     }
 }
