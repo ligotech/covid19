@@ -1,7 +1,11 @@
 package com.creditsuisse.covid19.outbreak;
 
 import com.creditsuisse.covid19.beans.TotalCount;
+import com.creditsuisse.covid19.exception.handler.Covid19Exception;
+import com.creditsuisse.covid19.exception.handler.NotFoundException;
 import com.mongodb.MongoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +20,8 @@ import java.util.Map;
 
 @RestController
 public class OutBreakController {
+
+    private static final Logger logger = LoggerFactory.getLogger(OutBreakController.class);
 
     @Autowired
     private OutBreakService outBreakService;
@@ -36,22 +42,25 @@ public class OutBreakController {
             if(column.equals("recovered")){
                 val = outBreakService.getTotalRecovered();
             }
-            if(column.equals("incidentRate")){
+            if(column.equals("incident-rate")){
                 val = outBreakService.getTotalIncidentRate();
             }
-            if(column.equals("caseFatalityRatio")){
+            if(column.equals("case-fatality-ratio")){
                 val = outBreakService.getTotalCaseFatalityRatio();
             }
         }
         catch (MongoException ex){
-            //TODO: logging and remove stack trace
-            ex.printStackTrace();
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
+        catch (Exception ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
         }
         if(val != null){
             return new ResponseEntity<>(val, HttpStatus.OK);
         }
-        return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        throw new NotFoundException("Data not found. " + val);
     }
 
     @GetMapping("query/{column}/")
@@ -70,24 +79,47 @@ public class OutBreakController {
             if(column.equals("recovered")){
                 totalCounts = outBreakService.getTotalRecoveredWithCriteria(params);
             }
-            if(column.equals("incidentRate")){
+            if(column.equals("incident-rate")){
                 totalCounts = outBreakService.getTotalIncidentRateWithCriteria(params);
             }
-            if(column.equals("caseFatalityRatio")){
+            if(column.equals("case-fatality-ratio")){
                 totalCounts = outBreakService.getTotalCaseFatalityRatioWithCriteria(params);
             }
         }
-        catch (MongoException ex){
-            //TODO: logging and remove stack trace
-            ex.printStackTrace();
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        catch (MongoException  ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
+        catch (Exception ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
         }
 
-        if(totalCounts.size() > 0){
+        if(!totalCounts.isEmpty()){
             return new ResponseEntity<>(totalCounts, HttpStatus.OK);
         }
-        else {
-            return new ResponseEntity<>(totalCounts, HttpStatus.NOT_FOUND);
+        throw new NotFoundException("Data Not Found: " + totalCounts);
+    }
+
+    @GetMapping("query/containment-zones")
+    public ResponseEntity<List<String>> getContainmentZones(@RequestParam Map<String, String> params){
+        List<String> list = new ArrayList<>();
+        try {
+            String threshold = params.get("threshold");
+            String date = params.get("date");
+            list = outBreakService.getContainmentZone(Long.valueOf(threshold), Integer.valueOf(date));
         }
+        catch (MongoException ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
+        catch (Exception ex){
+            logger.error("Exception:", ex.getMessage(), ex);
+            throw new Covid19Exception(ex.getMessage());
+        }
+        if(!list.isEmpty()){
+            return new ResponseEntity<>(list, HttpStatus.OK);
+        }
+        throw new NotFoundException("Data Not Found: " + list);
     }
 }

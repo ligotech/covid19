@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -72,11 +73,17 @@ public class OutBreakService {
     }
 
     public List<TotalCount> getTotalIncidentRateWithCriteria(Map<String, String> params) {
-        return getResult(params, "Incident_Rate", "avg");
+        return getResult(params, "Incident_Rate", "average");
     }
 
     public List<TotalCount> getTotalCaseFatalityRatioWithCriteria(Map<String, String> params) {
-        return getResult(params, "Case_Fatality_Ratio", "avg");
+        return getResult(params, "Case_Fatality_Ratio", "average");
+    }
+
+    public List<String> getContainmentZone(Long activeCaseThreshold, Integer date){
+        Query query = new Query(new Criteria("Active").gt(activeCaseThreshold).and("date").is(date));
+        query.fields().include("Combined_Key");
+        return mongoTemplate.find(query, OutBreak.class).stream().map(it -> it.getCombined_Key()).collect(Collectors.toList());
     }
 
     private Criteria getCriteria(Map<String, String> params){

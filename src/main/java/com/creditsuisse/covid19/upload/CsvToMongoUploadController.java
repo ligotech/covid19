@@ -1,5 +1,7 @@
 package com.creditsuisse.covid19.upload;
 
+import com.creditsuisse.covid19.exception.handler.Covid19Exception;
+import com.creditsuisse.covid19.exception.handler.NotFoundException;
 import com.creditsuisse.covid19.outbreak.OutBreak;
 import com.creditsuisse.covid19.outbreak.OutBreakService;
 import com.mongodb.MongoBulkWriteException;
@@ -43,13 +45,12 @@ public class CsvToMongoUploadController {
             catch (IOException | MongoBulkWriteException ex){
                 ex.printStackTrace();
                 //TODO: logging and remove trace
+                throw new Covid19Exception(ex.getMessage());
             }
             long end = System.currentTimeMillis();
             long diff = end - start;
             return new ResponseEntity("Created in " + diff + " ms.", HttpStatus.CREATED);
         }
-        else {
-            return new ResponseEntity(date + " not found.", HttpStatus.NOT_FOUND);
-        }
+        throw new NotFoundException("File Not Found:" + file.getName());
     }
 }
